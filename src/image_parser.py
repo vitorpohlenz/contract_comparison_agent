@@ -29,10 +29,10 @@ def encode_image(path: str) -> str:
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
-def parse_contract_image(image_path: str, client: OpenAI=AI_API_CLIENT) -> str:
+def parse_contract_image(image_path: str, contract_id: str, client: OpenAI=AI_API_CLIENT) -> str:
     with start_trace(
         "image_parsing",
-        {"image_path": image_path}
+        {"image_path": image_path, "contract_id": contract_id}
     ) as trace:
         image_b64 = encode_image(image_path)
         vision_model = os.getenv("IMAGE_MULTIMODAL_MODEL")
