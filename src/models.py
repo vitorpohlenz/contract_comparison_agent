@@ -3,21 +3,20 @@ from typing import List
 
 
 class ContractChangeSummary(BaseModel):
-    added_sections: List[str] = Field(
-        ..., min_items=0, description="Contract sections that were added"
+    topics_touched: List[str] = Field(
+        ..., min_items=1, description="Legal or business topics affected"
     )
-    removed_sections: List[str] = Field(
-        ..., min_items=0, description="Contract sections that were removed"
-    )
-    modified_sections: List[str] = Field(
-        ..., min_items=0, description="Contract sections that were modified"
+    sections_changed: List[str] = Field(
+        ..., min_items=1, description="Contract sections that were changed"
     )
     summary_of_the_change: str = Field(
         ..., min_length=5, description="Summary of the change with format Section X: -change_1 \n change_2, ..."
     )
 
-    @validator("added_sections", "removed_sections", "modified_sections")
-    def no_empty_strings(cls, v):
-        if any(len(item.strip()) == 0 for item in v):
-            raise ValueError("List items must not be empty")
-        return v
+class ContextualizedContract(BaseModel):
+    original_contract_text: str = Field(
+        ..., min_length=5, description="Text of the original contract just the text impacted by the amendment"
+    )
+    amendment_text: str = Field(
+        ..., min_length=5, description="Text of the amendment"
+    )
