@@ -17,13 +17,11 @@ from src.models import ContractChangeSummary
 
 SYSTEM_PROMPT = (
     "You are a senior contract comparison analyst. "
-    "Compare two contracts and identify structure, section alignment, "
-    "and which sections correspond to each other."
+    "Compare the ORIGINAL CONTRACT and the AMENDMENT and identify the topics touched, the sections changed and the summary of the change."
     "\n Return a JSON object with the following fields:"
-    "\n - added_sections: list of added sections"
-    "\n - removed_sections: list of removed sections"
-    "\n - modified_sections: list of modified sections"
-    "\n - summary_of_the_change: summary of the change with format Section X: -change_1 \n change_2, ..."
+    "\n - topics_touched: list of topics touched"
+    "\n - sections_changed: list of changed sections"
+    "\n - summary_of_the_change: summary of the change with format Section X: -change_1 \n -change_2, ..."
 )
 
 
