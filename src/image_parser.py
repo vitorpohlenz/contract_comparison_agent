@@ -79,16 +79,16 @@ def parse_contract_image(image_path: str, contract_id: str, client: OpenAI=AI_AP
     return parsed_text
 
 
-def parse_full_contract(images_folder: str, client: OpenAI=AI_API_CLIENT) -> str:
+def parse_full_contract(images_folder: str, contract_id: str, client: OpenAI=AI_API_CLIENT) -> str:
     with start_trace(
         "parse_full_contract",
-        {"images_folder": images_folder}
+        {"images_folder": images_folder, "contract_id": contract_id}
     ) as trace:
         images = os.listdir(images_folder)
         with ThreadPoolExecutor(max_workers=len(images)) as executor:
             text_list = list(
                 executor.map(
-                    lambda f: parse_contract_image(image_path=images_folder+f, client=client),
+                    lambda f: parse_contract_image(image_path=images_folder+f, contract_id=contract_id, client=client),
                     images
                 )
             )
