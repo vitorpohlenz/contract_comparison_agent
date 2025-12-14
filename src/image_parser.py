@@ -15,13 +15,9 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT_DIR))
 
 from src.tracing import start_trace
+from src.utils import AI_API_CLIENT
 
 load_dotenv()
-
-client = OpenAI(
-    api_key=os.getenv("LLM_API_KEY"),
-    base_url=os.getenv("LLM_BASE_URL")
-)
 
 SYSTEM_PROMPT = (
     "You are a legal, text from image, parser. "
@@ -33,7 +29,7 @@ def encode_image(path: str) -> str:
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
-def parse_contract_image(image_path: str, client: OpenAI=client) -> str:
+def parse_contract_image(image_path: str, client: OpenAI=AI_API_CLIENT) -> str:
     with start_trace(
         "image_parsing",
         {"image_path": image_path}
@@ -83,7 +79,7 @@ def parse_contract_image(image_path: str, client: OpenAI=client) -> str:
     return parsed_text
 
 
-def parse_full_contract(images_folder: str, client: OpenAI=client) -> str:
+def parse_full_contract(images_folder: str, client: OpenAI=AI_API_CLIENT) -> str:
     with start_trace(
         "parse_full_contract",
         {"images_folder": images_folder}
@@ -96,4 +92,5 @@ def parse_full_contract(images_folder: str, client: OpenAI=client) -> str:
                     images
                 )
             )
-        return text_list
+    
+    return ''.join(text_list)
