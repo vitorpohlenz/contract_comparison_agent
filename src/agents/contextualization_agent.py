@@ -13,15 +13,15 @@ sys.path.append(str(ROOT_DIR))
 
 from src.tracing import start_trace
 from src.utils import AI_API_CLIENT, prompt_template
-from src.models import ContractChangeSummary
+from src.models import ContextualizedContract
 
 SYSTEM_PROMPT = (
-    "You are a senior contract comparison analyst. "
-    "Compare the ORIGINAL CONTRACT and the AMENDMENT and identify the topics touched, the sections changed and the summary of the change."
-    "\n Return a JSON object with the following fields:"
-    "\n - topics_touched: list of topics touched"
-    "\n - sections_changed: list of changed sections"
-    "\n - summary_of_the_change: summary of the change with format Section X: -change_1 \n -change_2, ..."
+    "You are a senior legal contextualization agent. "
+    "Contextualize the ORIGINAL CONTRACT and the AMENDMENT and identify structure, section alignment, "
+    "and which sections correspond to each other."
+    "\n Return a JSON object with the following fields, containing just the text impacted by the amendment and the amendment text:"
+    "\n - original_contract_text: text of the original contract just the text impacted by the amendment"
+    "\n - amendment_text: text of the amendment"
 )
 
 
@@ -35,7 +35,7 @@ def contextualize_documents(
         "contextualization_agent",
         {"agent": "contextualization"}
     ) as trace:
-        contextualization_model = os.getenv("CONTEXTUALIZATION_MODEL")
+        contextualization_model = os.getenv("LLM_MODEL")
 
         response = client.chat.completions.parse(
             model=contextualization_model,
@@ -45,7 +45,7 @@ def contextualize_documents(
             full_model_name=contextualization_model
             ),
             temperature=0,
-            response_format=ContractChangeSummary
+            response_format=ContextualizedContract
         )
 
         output = response.choices[0].message.parsed
