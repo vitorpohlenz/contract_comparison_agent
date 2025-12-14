@@ -28,12 +28,13 @@ SYSTEM_PROMPT = (
 def extract_changes(
         original_text: str,
         amendment_text: str,
+        contract_id: str,
         client: OpenAI=AI_API_CLIENT,
         system_prompt: str=SYSTEM_PROMPT
-    ) -> str:
+    ) -> ContractChangeSummary:
     with start_trace(
         "extraction_agent",
-        {"agent": "extraction"}
+        {"agent": "extraction", "contract_id": contract_id}
     ) as trace:
         extraction_model = os.getenv("LLM_MODEL")
 

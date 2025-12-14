@@ -28,12 +28,13 @@ SYSTEM_PROMPT = (
 def contextualize_documents(
         original_text: str,
         amendment_text: str,
+        contract_id: str,
         client: OpenAI=AI_API_CLIENT,
         system_prompt: str=SYSTEM_PROMPT
-    ) -> str:
+    ) -> ContextualizedContract:
     with start_trace(
         "contextualization_agent",
-        {"agent": "contextualization"}
+        {"agent": "contextualization", "contract_id": contract_id}
     ) as trace:
         contextualization_model = os.getenv("LLM_MODEL")
 
