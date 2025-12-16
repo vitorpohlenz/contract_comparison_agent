@@ -41,6 +41,7 @@ def parse_contract_image(image_path: str, contract_id: str, client: ChatOpenAI=A
         api_key=os.getenv("LLM_API_KEY"),
         base_url=os.getenv("LLM_BASE_URL"),
         temperature=0,
+        name=f"image_parser_{contract_id}",
         callbacks=callbacks
     )
 

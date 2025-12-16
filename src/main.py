@@ -112,7 +112,7 @@ def main():
                 contract_id=contract_id,
                 callbacks=[langfuse_handler]
             )
-            span.update(output=_serialize_output(context))
+            span.update(output=context.model_dump())
             span.end()
 
         # Step 4: Extract changes
@@ -131,13 +131,13 @@ def main():
                 contract_id=contract_id,
                 callbacks=[langfuse_handler]
             )
-            span.update(output=_serialize_output(result))
+            span.update(output=result.model_dump())
             span.end()
 
         print(result.model_dump())
         
         # Set final output on the main trace
-        main_trace.update(output=_serialize_output(result))
+        main_trace.update(output=result.model_dump())
         main_trace.end()
 
 if __name__ == "__main__":
