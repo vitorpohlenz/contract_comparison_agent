@@ -4,7 +4,8 @@ sys.dont_write_bytecode = True
 import os
 from dotenv import load_dotenv
 import base64
-from openai import OpenAI
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -29,7 +30,7 @@ def encode_image(path: str) -> str:
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
-def parse_contract_image(image_path: str, contract_id: str, client: OpenAI=AI_API_CLIENT) -> str:
+def parse_contract_image(image_path: str, contract_id: str, client: ChatOpenAI=AI_API_CLIENT) -> str:
     with start_trace(
         "image_parsing",
         {"image_path": image_path, "contract_id": contract_id}
@@ -37,27 +38,30 @@ def parse_contract_image(image_path: str, contract_id: str, client: OpenAI=AI_AP
         image_b64 = encode_image(image_path)
         vision_model = os.getenv("IMAGE_MULTIMODAL_MODEL")
 
-        provider = vision_model.split('/')[0]
+        provider = vision_model.split('/')[0] if vision_model else "unknown"
+
+        # Create a model instance with the specific vision model for this call
+        model = ChatOpenAI(
+            model=vision_model,
+            api_key=os.getenv("LLM_API_KEY"),
+            base_url=os.getenv("LLM_BASE_URL"),
+            temperature=0
+        )
 
         if provider == "openai":
             messages = [
-                {
-                    "role": "system",
-                    "content": SYSTEM_PROMPT
-                },
-                {
-                    "role": "user",
-                    "content": [
+                SystemMessage(content=SYSTEM_PROMPT),
+                HumanMessage(
+                    content=[
                         {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}}
                     ]
-                }
+                )
             ]
         else:
             # Gemini and others providers does not support system messages
             messages = [
-                {
-                    "role": "user",
-                    "content": [
+                HumanMessage(
+                    content=[
                         {"type": "text", "text": SYSTEM_PROMPT},
                         {
                             "type": "image_url",
@@ -66,20 +70,16 @@ def parse_contract_image(image_path: str, contract_id: str, client: OpenAI=AI_AP
                             }
                         }
                     ]
-                }
+                )
             ]
 
-        response = client.chat.completions.create(
-            model=vision_model,
-            messages=messages,
-            temperature=0
-        )
-        parsed_text = response.choices[0].message.content
+        response = model.invoke(messages)
+        parsed_text = response.content
     
     return parsed_text
 
 
-def parse_full_contract(images_folder: str, contract_id: str, client: OpenAI=AI_API_CLIENT) -> str:
+def parse_full_contract(images_folder: str, contract_id: str, client: ChatOpenAI=AI_API_CLIENT) -> str:
     with start_trace(
         "parse_full_contract",
         {"images_folder": images_folder, "contract_id": contract_id}

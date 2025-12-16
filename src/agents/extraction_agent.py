@@ -4,7 +4,7 @@ sys.dont_write_bytecode = True
 import os
 from dotenv import load_dotenv
 
-from openai import OpenAI
+from langchain_openai import ChatOpenAI
 
 from pathlib import Path
 
@@ -29,7 +29,7 @@ def extract_changes(
         original_text: str,
         amendment_text: str,
         contract_id: str,
-        client: OpenAI=AI_API_CLIENT,
+        client: ChatOpenAI=AI_API_CLIENT,
         system_prompt: str=SYSTEM_PROMPT
     ) -> ContractChangeSummary:
     with start_trace(
@@ -38,17 +38,22 @@ def extract_changes(
     ) as trace:
         extraction_model = os.getenv("LLM_MODEL")
 
-        response = client.chat.completions.parse(
+        # Create a model instance with the specific model for this call
+        model = ChatOpenAI(
             model=extraction_model,
-            messages=prompt_template(
-                system_prompt=system_prompt,
-                user_prompt=(f"\n\nORIGINAL CONTRACT CONTENT:\n {original_text} \n\nAMENDMENT CONTENT:\n {amendment_text}"),
-            full_model_name=extraction_model
-            ),
-            temperature=0,
-            response_format=ContractChangeSummary
+            api_key=os.getenv("LLM_API_KEY"),
+            base_url=os.getenv("LLM_BASE_URL"),
+            temperature=0
         )
 
-        output = response.choices[0].message.parsed
+        response = model.with_structured_output(ContractChangeSummary).invoke(
+            prompt_template(
+                system_prompt=system_prompt,
+                user_prompt=(f"\n\nORIGINAL CONTRACT CONTENT:\n {original_text} \n\nAMENDMENT CONTENT:\n {amendment_text}"),
+                full_model_name=extraction_model
+            )
+        )
+
+        output = response
     
     return output
