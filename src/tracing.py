@@ -1,6 +1,8 @@
 from langfuse import Langfuse
 import os
 from uuid import uuid4
+from dotenv import load_dotenv
+load_dotenv()
 
 langfuse = Langfuse(
     public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
