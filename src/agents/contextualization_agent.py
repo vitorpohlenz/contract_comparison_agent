@@ -11,7 +11,6 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parents[2]
 sys.path.append(str(ROOT_DIR))
 
-from src.tracing import start_trace
 from src.utils import AI_API_CLIENT, prompt_template
 from src.models import ContextualizedContract
 
@@ -31,29 +30,25 @@ def contextualize_documents(
         contract_id: str,
         client: ChatOpenAI=AI_API_CLIENT,
         system_prompt: str=SYSTEM_PROMPT,
+        callbacks=None
     ) -> ContextualizedContract:
-    with start_trace(
-        "contextualization_agent",
-        {"agent": "contextualization", "contract_id": contract_id}
-    ) as trace:
-        contextualization_model = os.getenv("LLM_MODEL")
+    contextualization_model = os.getenv("LLM_MODEL")
 
-        # Create a model instance with the specific model for this call
-        model = ChatOpenAI(
-            model=contextualization_model,
-            api_key=os.getenv("LLM_API_KEY"),
-            base_url=os.getenv("LLM_BASE_URL"),
-            temperature=0
+    # Create a model instance with the specific model for this call
+    model = ChatOpenAI(
+        model=contextualization_model,
+        api_key=os.getenv("LLM_API_KEY"),
+        base_url=os.getenv("LLM_BASE_URL"),
+        temperature=0,
+        callbacks=callbacks
+    )
+
+    response = model.with_structured_output(ContextualizedContract).invoke(
+        prompt_template(
+            system_prompt=system_prompt,
+            user_prompt=(f"\n\nORIGINAL CONTRACT:\n {original_text} \n\nAMENDMENT:\n {amendment_text}"),
+            full_model_name=contextualization_model
         )
+    )
 
-        response = model.with_structured_output(ContextualizedContract).invoke(
-            prompt_template(
-                system_prompt=system_prompt,
-                user_prompt=(f"\n\nORIGINAL CONTRACT:\n {original_text} \n\nAMENDMENT:\n {amendment_text}"),
-                full_model_name=contextualization_model
-            )
-        )
-
-        output = response
-    
-    return output
+    return response

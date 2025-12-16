@@ -11,7 +11,6 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parents[2]
 sys.path.append(str(ROOT_DIR))
 
-from src.tracing import start_trace
 from src.utils import AI_API_CLIENT, prompt_template
 from src.models import ContractChangeSummary
 
@@ -30,30 +29,26 @@ def extract_changes(
         amendment_text: str,
         contract_id: str,
         client: ChatOpenAI=AI_API_CLIENT,
-        system_prompt: str=SYSTEM_PROMPT
+        system_prompt: str=SYSTEM_PROMPT,
+        callbacks=None
     ) -> ContractChangeSummary:
-    with start_trace(
-        "extraction_agent",
-        {"agent": "extraction", "contract_id": contract_id}
-    ) as trace:
-        extraction_model = os.getenv("LLM_MODEL")
+    extraction_model = os.getenv("LLM_MODEL")
 
-        # Create a model instance with the specific model for this call
-        model = ChatOpenAI(
-            model=extraction_model,
-            api_key=os.getenv("LLM_API_KEY"),
-            base_url=os.getenv("LLM_BASE_URL"),
-            temperature=0
+    # Create a model instance with the specific model for this call
+    model = ChatOpenAI(
+        model=extraction_model,
+        api_key=os.getenv("LLM_API_KEY"),
+        base_url=os.getenv("LLM_BASE_URL"),
+        temperature=0,
+        callbacks=callbacks
+    )
+
+    response = model.with_structured_output(ContractChangeSummary).invoke(
+        prompt_template(
+            system_prompt=system_prompt,
+            user_prompt=(f"\n\nORIGINAL CONTRACT CONTENT:\n {original_text} \n\nAMENDMENT CONTENT:\n {amendment_text}"),
+            full_model_name=extraction_model
         )
+    )
 
-        response = model.with_structured_output(ContractChangeSummary).invoke(
-            prompt_template(
-                system_prompt=system_prompt,
-                user_prompt=(f"\n\nORIGINAL CONTRACT CONTENT:\n {original_text} \n\nAMENDMENT CONTENT:\n {amendment_text}"),
-                full_model_name=extraction_model
-            )
-        )
-
-        output = response
-    
-    return output
+    return response
