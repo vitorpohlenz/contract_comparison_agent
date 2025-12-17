@@ -111,7 +111,6 @@ def main():
 
         print(f"Length of Original text: {len(original_text)}")
         print(f"Length of Amendment text: {len(amendment_text)}")
-        langfuse_client.flush()
         # Step 3: Contextualize documents
         with start_span(
             langfuse_client=langfuse_client,
@@ -154,7 +153,6 @@ def main():
         
         # Set final output on the main trace
         main_trace.update(output=result.model_dump())
-        langfuse_client.flush()
 
 if __name__ == "__main__":
     main()
