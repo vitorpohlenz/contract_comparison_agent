@@ -69,25 +69,11 @@ def main():
                 "contract_id": contract_id
             }
         ) as span_parse_contract:
-            # Get trace context to pass to threads
-            # Use span.trace_id (32-char hex) and span.id (16-char hex observation ID)
-            # Ensure IDs are lowercase hex strings as required by Langfuse
-            if hasattr(span_parse_contract, 'trace_id'):
-                trace_id = span_parse_contract.trace_id.lower()
-            else:
-                trace_id = langfuse_client.get_current_trace_id().lower() #langfuse_client.get_current_trace_id()).lower()
-
-            if hasattr(span_parse_contract, 'id'):
-                parent_span_id = span_parse_contract.id.lower()
-            else:
-                parent_span_id = langfuse_client.get_current_span_id().lower()
-            
+            # With ThreadingInstrumentor, the trace context is automatically propagated
+            # to worker threads, so no need to manually pass trace_id or parent_span_id
             original_text = parse_full_contract(
                 original_path, 
                 contract_id, 
-                langfuse_client=langfuse_client,
-                langfuse_trace_id=trace_id,
-                langfuse_parent_span_id=parent_span_id,
                 callbacks=[langfuse_handler],
             )
             span_parse_contract.update(
@@ -109,25 +95,11 @@ def main():
                 "contract_id": contract_id
             }
         ) as span_parse_amendment:
-            # Get trace context to pass to threads
-            # Use span.trace_id (32-char hex) and span.id (16-char hex observation ID)
-            # Ensure IDs are lowercase hex strings as required by Langfuse
-            if hasattr(span_parse_amendment, 'trace_id'):
-                trace_id = span_parse_amendment.trace_id.lower()
-            else:
-                trace_id = langfuse_client.get_current_trace_id().lower()
-
-            if hasattr(span_parse_amendment, 'id'):
-                parent_span_id = span_parse_amendment.id.lower()
-            else:
-                parent_span_id = langfuse_client.get_current_span_id().lower()
-            
+            # With ThreadingInstrumentor, the trace context is automatically propagated
+            # to worker threads, so no need to manually pass trace_id or parent_span_id
             amendment_text = parse_full_contract(
                 amendment_path, 
                 contract_id, 
-                langfuse_client=langfuse_client,
-                langfuse_trace_id=trace_id,
-                langfuse_parent_span_id=parent_span_id,
                 callbacks=[langfuse_handler],
             )
             span_parse_amendment.update(
