@@ -38,6 +38,9 @@ def main():
     contract_id = sys.argv[3]
 
     langfuse_client = get_client()
+    
+    # Use contract_id as session_id for all spans
+    session_id = contract_id
 
     # Create centralized trace for the entire flow using langfuse.trace()
     with start_span(
@@ -47,7 +50,8 @@ def main():
             "original_path": original_path,
             "amendment_path": amendment_path,
             "contract_id": contract_id
-        }
+        },
+        metadata={"session_id": session_id}
     ) as main_trace:
         
         # Get Langfuse callback handler for LangChain integration
@@ -67,7 +71,8 @@ def main():
                 "contract_type": "original",
                 "path": original_path,
                 "contract_id": contract_id
-            }
+            },
+            metadata={"session_id": session_id}
         ) as span_parse_contract:
             # With ThreadingInstrumentor, the trace context is automatically propagated
             # to worker threads, so no need to manually pass trace_id or parent_span_id
@@ -93,7 +98,8 @@ def main():
                 "contract_type": "amendment",
                 "path": amendment_path,
                 "contract_id": contract_id
-            }
+            },
+            metadata={"session_id": session_id}
         ) as span_parse_amendment:
             # With ThreadingInstrumentor, the trace context is automatically propagated
             # to worker threads, so no need to manually pass trace_id or parent_span_id
@@ -120,7 +126,8 @@ def main():
                 "contract_id": contract_id,
                 "original_text_length": len(original_text),
                 "amendment_text_length": len(amendment_text)
-            }
+            },
+            metadata={"session_id": session_id}
         ) as span_contextualize_documents:
             context = contextualize_documents(
                 original_text=original_text,
@@ -139,7 +146,8 @@ def main():
                 "contract_id": contract_id,
                 "contextualized_original_length": len(context.original_contract_text),
                 "contextualized_amendment_length": len(context.amendment_text)
-            }
+            },
+            metadata={"session_id": session_id}
         ) as span_extract_changes:
             result = extract_changes(
                 original_text=context.original_contract_text,
