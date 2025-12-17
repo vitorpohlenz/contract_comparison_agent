@@ -41,8 +41,9 @@ def main():
 
     # Create centralized trace for the entire flow using langfuse.trace()
     with start_span(
-        "contract_comparison",
-        {
+        langfuse_client=langfuse_client,
+        name="contract_comparison",
+        input={
             "original_path": original_path,
             "amendment_path": amendment_path,
             "contract_id": contract_id
@@ -59,8 +60,9 @@ def main():
 
         # Step 1: Parse original contract images
         with start_span(
-            "parse_original_contract",
-            {
+            langfuse_client=langfuse_client,
+            name="parse_original_contract",
+            input={
                 "step": "image_parsing",
                 "contract_type": "original",
                 "path": original_path,
@@ -83,6 +85,7 @@ def main():
             original_text = parse_full_contract(
                 original_path, 
                 contract_id, 
+                langfuse_client=langfuse_client,
                 langfuse_trace_id=trace_id,
                 langfuse_parent_span_id=parent_span_id,
                 callbacks=[langfuse_handler],
@@ -96,8 +99,10 @@ def main():
 
         # Step 2: Parse amendment images
         with start_span(
-            "parse_amendment_contract",
-            {
+            langfuse_client=langfuse_client,
+            name="parse_amendment_contract",
+            input={
+            
                 "step": "image_parsing",
                 "contract_type": "amendment",
                 "path": amendment_path,
@@ -120,6 +125,7 @@ def main():
             amendment_text = parse_full_contract(
                 amendment_path, 
                 contract_id, 
+                langfuse_client=langfuse_client,
                 langfuse_trace_id=trace_id,
                 langfuse_parent_span_id=parent_span_id,
                 callbacks=[langfuse_handler],
@@ -136,8 +142,9 @@ def main():
         langfuse_client.flush()
         # Step 3: Contextualize documents
         with start_span(
-            "contextualize_documents",
-            {
+            langfuse_client=langfuse_client,
+            name="contextualize_documents",
+            input={
                 "step": "contextualization",
                 "contract_id": contract_id,
                 "original_text_length": len(original_text),
@@ -154,8 +161,9 @@ def main():
 
         # Step 4: Extract changes
         with start_span(
-            "extract_changes",
-            {
+            langfuse_client=langfuse_client,
+            name="extract_changes",
+            input={
                 "step": "extraction",
                 "contract_id": contract_id,
                 "contextualized_original_length": len(context.original_contract_text),
@@ -174,7 +182,7 @@ def main():
         
         # Set final output on the main trace
         main_trace.update(output=result.model_dump())
-        # main_trace.end()
+        langfuse_client.flush()
 
 if __name__ == "__main__":
     main()

@@ -12,7 +12,7 @@ langfuse = Langfuse(
 )
 
 @contextmanager
-def start_trace(name: str, input: dict):
+def start_trace(langfuse_client: Langfuse, name: str, input: dict):
     """
     Context manager for creating Langfuse traces with proper input/output handling.
     Uses start_as_current_observation with as_type="trace" (modern Langfuse API).
@@ -24,7 +24,6 @@ def start_trace(name: str, input: dict):
     Yields:
         Trace object that can be used to create child spans and set output
     """
-    langfuse_client = get_client()
     with langfuse_client.start_as_current_observation(
         name=name,
         input=_serialize_input(input),
@@ -36,7 +35,7 @@ def start_trace(name: str, input: dict):
             pass
 
 @contextmanager
-def start_span(name: str, input: dict, langfuse_trace_id=None, langfuse_parent_span_id=None):
+def start_span(langfuse_client: Langfuse, name: str, input: dict, langfuse_trace_id=None, langfuse_parent_span_id=None):
     """
     Context manager for creating child spans within an existing trace.
     Uses start_as_current_observation with as_type="span" which automatically attaches to the current trace context.
@@ -50,7 +49,6 @@ def start_span(name: str, input: dict, langfuse_trace_id=None, langfuse_parent_s
     Yields:
         Span object that can be used to set output
     """
-    langfuse_client = get_client()
     if not(langfuse_trace_id is None) and not (langfuse_parent_span_id is None):
         with langfuse_client.start_as_current_observation(
             name=name,

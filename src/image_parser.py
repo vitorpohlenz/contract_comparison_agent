@@ -10,7 +10,7 @@ import time
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from langfuse import observe
+from langfuse import observe, Langfuse
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
@@ -34,11 +34,13 @@ def encode_image(path: str) -> str:
 def parse_contract_image(
     image_path: str, 
     contract_id: str, 
+    langfuse_client: Langfuse,
     langfuse_trace_id,
     langfuse_parent_span_id,
     callbacks=None,
 ) -> str:
     with start_span(
+        langfuse_client=langfuse_client,
         name=f"image_parser",
         input={
             "image_path": image_path,
@@ -98,6 +100,7 @@ def parse_contract_image(
 def parse_full_contract(
     images_folder: str, 
     contract_id: str,
+    langfuse_client: Langfuse,
     langfuse_trace_id,
     langfuse_parent_span_id,
     callbacks=None,
@@ -110,6 +113,7 @@ def parse_full_contract(
             lambda image: parse_contract_image(
                 image_path=os.path.join(images_folder, image), 
                 contract_id=contract_id, 
+                langfuse_client=langfuse_client,
                 langfuse_trace_id=langfuse_trace_id,
                 langfuse_parent_span_id=langfuse_parent_span_id,
                 callbacks=callbacks
@@ -118,4 +122,5 @@ def parse_full_contract(
             )
     text = ''.join(text_list)
 
+    langfuse_client.flush()
     return text
