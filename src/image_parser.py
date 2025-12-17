@@ -92,34 +92,8 @@ def parse_contract_image(
         response = model.invoke(messages)
         parsed_text = response.content
         span.update(output={"parsed_text": parsed_text})
-    time.sleep(0.1)
+
     return parsed_text
-
-# def parse_full_contract(
-#     images_folder: str, 
-#     contract_id: str,
-#     langfuse_trace_id,
-#     langfuse_parent_span_id,
-#     callbacks=None,
-# ) -> str:
-    
-#     images = sorted(os.listdir(images_folder))  # Sort for consistent ordering
-    
-#     with ThreadPoolExecutor(max_workers=len(images)) as executor:
-#         text_list = list(executor.map(
-#             lambda image: parse_contract_image(
-#                 image_path=os.path.join(images_folder, image), 
-#                 contract_id=contract_id, 
-#                 langfuse_trace_id=langfuse_trace_id,
-#                 langfuse_parent_span_id=langfuse_parent_span_id,
-#                 callbacks=callbacks
-#             ), 
-#             images)
-#             )
-#     text = ''.join(text_list)
-#     time.sleep(0.1)
-#     return text
-
 
 def parse_full_contract(
     images_folder: str, 
@@ -129,29 +103,19 @@ def parse_full_contract(
     callbacks=None,
 ) -> str:
     
-    images = sorted(os.listdir(images_folder))  # Consistent ordering
-    
-    results = {}
+    images = sorted(os.listdir(images_folder))  # Sort for consistent ordering
     
     with ThreadPoolExecutor(max_workers=len(images)) as executor:
-        futures = {
-            executor.submit(
-                parse_contract_image,
-                image_path=os.path.join(images_folder, image),
-                contract_id=contract_id,
+        text_list = list(executor.map(
+            lambda image: parse_contract_image(
+                image_path=os.path.join(images_folder, image), 
+                contract_id=contract_id, 
                 langfuse_trace_id=langfuse_trace_id,
                 langfuse_parent_span_id=langfuse_parent_span_id,
-                callbacks=callbacks,
-            ): idx
-            for idx, image in enumerate(images)
-        }
-        
-        for future in as_completed(futures):
-            idx = futures[future]
-            results[idx] = future.result()
-    
-    # Reconstruct text in original order
-    text = ''.join(results[i] for i in range(len(images)))
-    
-    time.sleep(0.1)
+                callbacks=callbacks
+            ), 
+            images)
+            )
+    text = ''.join(text_list)
+
     return text
