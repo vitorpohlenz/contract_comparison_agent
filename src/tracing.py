@@ -36,7 +36,7 @@ def start_trace(name: str, input: dict):
             pass
 
 @contextmanager
-def start_span(name: str, input: dict):
+def start_span(name: str, input: dict, langfuse_trace_id=None, langfuse_parent_span_id=None):
     """
     Context manager for creating child spans within an existing trace.
     Uses start_as_current_observation with as_type="span" which automatically attaches to the current trace context.
@@ -44,20 +44,37 @@ def start_span(name: str, input: dict):
     Args:
         name: Name of the span
         input: Input data (will be serialized)
+        langfuse_trace_id: Trace ID
+        langfuse_parent_observation_id: Parent observation ID
     
     Yields:
         Span object that can be used to set output
     """
     langfuse_client = get_client()
-    with langfuse_client.start_as_current_observation(
-        name=name,
-        input=_serialize_input(input),
-        as_type="span"
-    ) as span:
-        try:
-            yield span
-        finally:
-            pass
+    if not(langfuse_trace_id is None) and not (langfuse_parent_span_id is None):
+        with langfuse_client.start_as_current_observation(
+            name=name,
+            as_type="span",
+            input=_serialize_input(input),
+            trace_context={
+                "trace_id": langfuse_trace_id,
+                "parent_span_id": langfuse_parent_span_id
+            }
+            ) as span:
+                try:
+                    yield span
+                finally:
+                    pass
+    else:
+        with langfuse_client.start_as_current_observation(
+            name=name,
+            input=_serialize_input(input),
+            as_type="span"
+        ) as span:
+            try:
+                yield span
+            finally:
+                pass
 
 def _serialize_input(input_data):
     """Serialize input data to be JSON-serializable for Langfuse."""

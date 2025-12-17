@@ -9,7 +9,7 @@ sys.path.append(str(ROOT_DIR))
 from src.image_parser import parse_full_contract
 from src.agents.contextualization_agent import contextualize_documents
 from src.agents.extraction_agent import extract_changes
-from src.tracing import start_trace, start_span, get_langfuse_callback_handler
+from src.tracing import start_trace, start_span, CallbackHandler
 from langfuse import get_client
 
 def _serialize_output(output):
@@ -40,7 +40,7 @@ def main():
     langfuse_client = get_client()
 
     # Create centralized trace for the entire flow using langfuse.trace()
-    with start_trace(
+    with start_span(
         "contract_comparison",
         {
             "original_path": original_path,
@@ -51,7 +51,7 @@ def main():
         
         # Get Langfuse callback handler for LangChain integration
         # This will automatically capture all LLM calls within this trace
-        langfuse_handler = get_langfuse_callback_handler()
+        langfuse_handler = CallbackHandler()
 
         print(f"Starting contract comparison for contract: {contract_id}")
         print(f"Parsing original contract: {original_path}")
@@ -76,16 +76,16 @@ def main():
                 trace_id = langfuse_client.get_current_trace_id().lower() #langfuse_client.get_current_trace_id()).lower()
 
             if hasattr(span_parse_contract, 'id'):
-                parent_observation_id = span_parse_contract.id.lower()
+                parent_span_id = span_parse_contract.id.lower()
             else:
-                parent_observation_id = langfuse_client.get_current_observation_id().lower()
+                parent_span_id = langfuse_client.get_current_span_id().lower()
             
             original_text = parse_full_contract(
                 original_path, 
                 contract_id, 
-                callbacks=[langfuse_handler],
                 langfuse_trace_id=trace_id,
-                langfuse_parent_observation_id=parent_observation_id
+                langfuse_parent_span_id=parent_span_id,
+                callbacks=[langfuse_handler],
             )
             span_parse_contract.update(
                 output={
@@ -113,16 +113,16 @@ def main():
                 trace_id = langfuse_client.get_current_trace_id().lower()
 
             if hasattr(span_parse_amendment, 'id'):
-                parent_observation_id = span_parse_amendment.id.lower()
+                parent_span_id = span_parse_amendment.id.lower()
             else:
-                parent_observation_id = langfuse_client.get_current_observation_id().lower()
+                parent_span_id = langfuse_client.get_current_span_id().lower()
             
             amendment_text = parse_full_contract(
                 amendment_path, 
                 contract_id, 
-                callbacks=[langfuse_handler],
                 langfuse_trace_id=trace_id,
-                langfuse_parent_observation_id=parent_observation_id
+                langfuse_parent_span_id=parent_span_id,
+                callbacks=[langfuse_handler],
             )
             span_parse_amendment.update(
                 output={
@@ -133,7 +133,7 @@ def main():
 
         print(f"Length of Original text: {len(original_text)}")
         print(f"Length of Amendment text: {len(amendment_text)}")
-
+        langfuse_client.flush()
         # Step 3: Contextualize documents
         with start_span(
             "contextualize_documents",
