@@ -3,6 +3,7 @@ from langfuse.langchain import CallbackHandler
 import os
 from contextlib import contextmanager
 from dotenv import load_dotenv
+from datetime import datetime
 load_dotenv()
 
 langfuse = Langfuse(
@@ -12,7 +13,7 @@ langfuse = Langfuse(
 )
 
 @contextmanager
-def start_trace(langfuse_client: Langfuse, name: str, input: dict):
+def start_trace(langfuse_client: Langfuse, name: str, input: dict, metadata: dict=None):
     """
     Context manager for creating Langfuse traces with proper input/output handling.
     Uses start_as_current_observation with as_type="trace" (modern Langfuse API).
@@ -20,14 +21,20 @@ def start_trace(langfuse_client: Langfuse, name: str, input: dict):
     Args:
         name: Name of the trace
         input: Input data (will be serialized)
+        metadata: Optional metadata dictionary to add to the trace
     
     Yields:
         Trace object that can be used to create child spans and set output
     """
+    # Prepare metadata with timestamp
+    trace_metadata = metadata.copy() if metadata else {}
+    trace_metadata['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+    
     with langfuse_client.start_as_current_observation(
         name=name,
         input=_serialize_input(input),
-        as_type="trace"
+        as_type="trace",
+        metadata=trace_metadata
     ) as trace:
         try:
             yield trace
@@ -35,7 +42,7 @@ def start_trace(langfuse_client: Langfuse, name: str, input: dict):
             pass
 
 @contextmanager
-def start_span(langfuse_client: Langfuse, name: str, input: dict, langfuse_trace_id=None, langfuse_parent_span_id=None):
+def start_span(langfuse_client: Langfuse, name: str, input: dict, langfuse_trace_id=None, langfuse_parent_span_id=None, metadata: dict=None):
     """
     Context manager for creating child spans within an existing trace.
     Uses start_as_current_observation with as_type="span" which automatically attaches to the current trace context.
@@ -45,15 +52,21 @@ def start_span(langfuse_client: Langfuse, name: str, input: dict, langfuse_trace
         input: Input data (will be serialized)
         langfuse_trace_id: Trace ID
         langfuse_parent_observation_id: Parent observation ID
+        metadata: Optional metadata dictionary to add to the span
     
     Yields:
         Span object that can be used to set output
     """
+    # Prepare metadata with timestamp
+    span_metadata = metadata.copy() if metadata else {}
+    span_metadata['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+    
     if not(langfuse_trace_id is None) and not (langfuse_parent_span_id is None):
         with langfuse_client.start_as_current_observation(
             name=name,
             as_type="span",
             input=_serialize_input(input),
+            metadata=span_metadata,
             trace_context={
                 "trace_id": langfuse_trace_id,
                 "parent_span_id": langfuse_parent_span_id
@@ -67,7 +80,8 @@ def start_span(langfuse_client: Langfuse, name: str, input: dict, langfuse_trace
         with langfuse_client.start_as_current_observation(
             name=name,
             input=_serialize_input(input),
-            as_type="span"
+            as_type="span",
+            metadata=span_metadata
         ) as span:
             try:
                 yield span
