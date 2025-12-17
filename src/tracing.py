@@ -1,4 +1,4 @@
-from langfuse import Langfuse
+from langfuse import Langfuse, get_client
 from langfuse.langchain import CallbackHandler
 import os
 from contextlib import contextmanager
@@ -12,35 +12,34 @@ langfuse = Langfuse(
 )
 
 @contextmanager
-def start_trace(name: str, input: dict, as_type: str = "trace"):
+def start_trace(name: str, input: dict):
     """
     Context manager for creating Langfuse traces with proper input/output handling.
+    Uses start_as_current_observation with as_type="trace" (modern Langfuse API).
     
     Args:
         name: Name of the trace
         input: Input data (will be serialized)
-        as_type: Type of observation - "trace", "span", or "generation"
     
     Yields:
         Trace object that can be used to create child spans and set output
     """
-    # start_as_current_observation returns a context manager that yields the observation
-    with langfuse.start_as_current_observation(
+    langfuse_client = get_client()
+    with langfuse_client.start_as_current_observation(
         name=name,
         input=_serialize_input(input),
-        as_type=as_type
+        as_type="trace"
     ) as trace:
         try:
             yield trace
         finally:
-            # Output will be set by the caller before exiting the context
-            # The observation will be automatically ended when exiting this context
             pass
 
 @contextmanager
 def start_span(name: str, input: dict):
     """
     Context manager for creating child spans within an existing trace.
+    Uses start_as_current_observation with as_type="span" which automatically attaches to the current trace context.
     
     Args:
         name: Name of the span
@@ -49,7 +48,8 @@ def start_span(name: str, input: dict):
     Yields:
         Span object that can be used to set output
     """
-    with langfuse.start_as_current_observation(
+    langfuse_client = get_client()
+    with langfuse_client.start_as_current_observation(
         name=name,
         input=_serialize_input(input),
         as_type="span"

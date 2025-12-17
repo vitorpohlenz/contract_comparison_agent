@@ -8,8 +8,8 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from concurrent.futures import ThreadPoolExecutor
-
 from pathlib import Path
+from langfuse import observe
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
@@ -29,7 +29,15 @@ def encode_image(path: str) -> str:
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
-def parse_contract_image(image_path: str, contract_id: str, client: ChatOpenAI=AI_API_CLIENT, callbacks=None) -> str:
+@observe()
+def parse_contract_image(
+    image_path: str, 
+    contract_id: str, 
+    client: ChatOpenAI=AI_API_CLIENT, 
+    callbacks=None,
+    langfuse_trace_id: str = None,
+    langfuse_parent_observation_id: str = None
+) -> str:
     image_b64 = encode_image(image_path)
     vision_model = os.getenv("IMAGE_MULTIMODAL_MODEL")
 
@@ -75,15 +83,37 @@ def parse_contract_image(image_path: str, contract_id: str, client: ChatOpenAI=A
     
     return parsed_text
 
-
-def parse_full_contract(images_folder: str, contract_id: str, client: ChatOpenAI=AI_API_CLIENT, callbacks=None) -> str:
-    images = os.listdir(images_folder)
-    with ThreadPoolExecutor(max_workers=len(images)) as executor:
-        text_list = list(
-            executor.map(
-                lambda f: parse_contract_image(image_path=images_folder+f, contract_id=contract_id, client=client, callbacks=callbacks),
-                images
-            )
+@observe()
+def parse_full_contract(
+    images_folder: str, 
+    contract_id: str, 
+    client: ChatOpenAI=AI_API_CLIENT, 
+    callbacks=None,
+    langfuse_trace_id: str = None,
+    langfuse_parent_observation_id: str = None
+) -> str:
+    from langfuse import get_client
+    
+    images = sorted(os.listdir(images_folder))  # Sort for consistent ordering
+    
+    # Get trace context if not provided (for threading support)
+    if langfuse_trace_id is None:
+        langfuse_client = get_client()
+        langfuse_trace_id = langfuse_client.get_current_trace_id()
+        langfuse_parent_observation_id = langfuse_client.get_current_observation_id()
+    
+    # Create a wrapper function that passes trace context to each thread
+    def parse_with_context(image_filename):
+        return parse_contract_image(
+            image_path=os.path.join(images_folder, image_filename),
+            contract_id=contract_id,
+            client=client,
+            callbacks=callbacks,
+            langfuse_trace_id=langfuse_trace_id,
+            langfuse_parent_observation_id=langfuse_parent_observation_id
         )
+    
+    with ThreadPoolExecutor(max_workers=len(images)) as executor:
+        text_list = list(executor.map(parse_with_context, images))
     
     return ''.join(text_list)

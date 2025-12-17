@@ -10,6 +10,7 @@ from src.image_parser import parse_full_contract
 from src.agents.contextualization_agent import contextualize_documents
 from src.agents.extraction_agent import extract_changes
 from src.tracing import start_trace, start_span, get_langfuse_callback_handler
+from langfuse import get_client
 
 def _serialize_output(output):
     """Serialize output data to be JSON-serializable for Langfuse."""
@@ -36,15 +37,16 @@ def main():
     amendment_path = sys.argv[2]
     contract_id = sys.argv[3]
 
-    # Create centralized trace for the entire flow
+    langfuse_client = get_client()
+
+    # Create centralized trace for the entire flow using langfuse.trace()
     with start_trace(
         "contract_comparison",
         {
             "original_path": original_path,
             "amendment_path": amendment_path,
             "contract_id": contract_id
-        },
-        as_type="trace"
+        }
     ) as main_trace:
         
         # Get Langfuse callback handler for LangChain integration
@@ -64,15 +66,33 @@ def main():
                 "path": original_path,
                 "contract_id": contract_id
             }
-        ) as span:
-            original_text = parse_full_contract(original_path, contract_id, callbacks=[langfuse_handler])
-            span.update(
+        ) as span_parse_contract:
+            # Get trace context to pass to threads
+            # Use span.trace_id (32-char hex) and span.id (16-char hex observation ID)
+            # Ensure IDs are lowercase hex strings as required by Langfuse
+            if hasattr(span_parse_contract, 'trace_id'):
+                trace_id = span_parse_contract.trace_id.lower()
+            else:
+                trace_id = langfuse_client.get_current_trace_id().lower() #langfuse_client.get_current_trace_id()).lower()
+
+            if hasattr(span_parse_contract, 'id'):
+                parent_observation_id = span_parse_contract.id.lower()
+            else:
+                parent_observation_id = langfuse_client.get_current_observation_id().lower()
+            
+            original_text = parse_full_contract(
+                original_path, 
+                contract_id, 
+                callbacks=[langfuse_handler],
+                langfuse_trace_id=trace_id,
+                langfuse_parent_observation_id=parent_observation_id
+            )
+            span_parse_contract.update(
                 output={
                     "text_length": len(original_text),
                     "text_preview": original_text[:500] if len(original_text) > 500 else original_text
                 }
             )
-            span.end()
 
         # Step 2: Parse amendment images
         with start_span(
@@ -83,15 +103,33 @@ def main():
                 "path": amendment_path,
                 "contract_id": contract_id
             }
-        ) as span:
-            amendment_text = parse_full_contract(amendment_path, contract_id, callbacks=[langfuse_handler])
-            span.update(
+        ) as span_parse_amendment:
+            # Get trace context to pass to threads
+            # Use span.trace_id (32-char hex) and span.id (16-char hex observation ID)
+            # Ensure IDs are lowercase hex strings as required by Langfuse
+            if hasattr(span_parse_amendment, 'trace_id'):
+                trace_id = span_parse_amendment.trace_id.lower()
+            else:
+                trace_id = langfuse_client.get_current_trace_id().lower()
+
+            if hasattr(span_parse_amendment, 'id'):
+                parent_observation_id = span_parse_amendment.id.lower()
+            else:
+                parent_observation_id = langfuse_client.get_current_observation_id().lower()
+            
+            amendment_text = parse_full_contract(
+                amendment_path, 
+                contract_id, 
+                callbacks=[langfuse_handler],
+                langfuse_trace_id=trace_id,
+                langfuse_parent_observation_id=parent_observation_id
+            )
+            span_parse_amendment.update(
                 output={
                     "text_length": len(amendment_text),
                     "text_preview": amendment_text[:500] if len(amendment_text) > 500 else amendment_text
                 }
             )
-            span.end()
 
         print(f"Length of Original text: {len(original_text)}")
         print(f"Length of Amendment text: {len(amendment_text)}")
@@ -105,15 +143,14 @@ def main():
                 "original_text_length": len(original_text),
                 "amendment_text_length": len(amendment_text)
             }
-        ) as span:
+        ) as span_contextualize_documents:
             context = contextualize_documents(
                 original_text=original_text,
                 amendment_text=amendment_text,
                 contract_id=contract_id,
                 callbacks=[langfuse_handler]
             )
-            span.update(output=context.model_dump())
-            span.end()
+            span_contextualize_documents.update(output=context.model_dump())
 
         # Step 4: Extract changes
         with start_span(
@@ -124,21 +161,20 @@ def main():
                 "contextualized_original_length": len(context.original_contract_text),
                 "contextualized_amendment_length": len(context.amendment_text)
             }
-        ) as span:
+        ) as span_extract_changes:
             result = extract_changes(
                 original_text=context.original_contract_text,
                 amendment_text=context.amendment_text,
                 contract_id=contract_id,
                 callbacks=[langfuse_handler]
             )
-            span.update(output=result.model_dump())
-            span.end()
+            span_extract_changes.update(output=result.model_dump())
 
         print(result.model_dump())
         
         # Set final output on the main trace
         main_trace.update(output=result.model_dump())
-        main_trace.end()
+        # main_trace.end()
 
 if __name__ == "__main__":
     main()
