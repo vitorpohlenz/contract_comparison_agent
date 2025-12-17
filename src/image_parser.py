@@ -40,8 +40,6 @@ def encode_image(path: str) -> str:
 def parse_contract_image(
     image_path: str, 
     contract_id: str,
-    model: ChatOpenAI,
-    provider: str,
     callbacks=None,
 ) -> str:
     """
@@ -53,6 +51,21 @@ def parse_contract_image(
     # The callback handler automatically attaches to the current trace context
     # which is propagated from the parent thread via ThreadingInstrumentor
     image_b64 = encode_image(image_path)
+    
+    vision_model = os.getenv("IMAGE_MULTIMODAL_MODEL")
+
+    provider = vision_model.split('/')[0] if vision_model else "unknown"
+
+    # Create a model instance with the specific vision model for this call
+    model = ChatOpenAI(
+        model=vision_model,
+        api_key=os.getenv("LLM_API_KEY"),
+        base_url=os.getenv("LLM_BASE_URL"),
+        temperature=0,
+        name=f"model_call_image_parser_{contract_id}",
+        callbacks=callbacks
+    )
+    
 
     if provider == "openai":
         messages = [
@@ -97,20 +110,6 @@ def parse_full_contract(
     propagated to worker threads via ThreadingInstrumentor, so child observations
     will automatically be nested under the current trace context.
     """
-    vision_model = os.getenv("IMAGE_MULTIMODAL_MODEL")
-
-    provider = vision_model.split('/')[0] if vision_model else "unknown"
-
-    # Create a model instance with the specific vision model for this call
-    model = ChatOpenAI(
-        model=vision_model,
-        api_key=os.getenv("LLM_API_KEY"),
-        base_url=os.getenv("LLM_BASE_URL"),
-        temperature=0,
-        name=f"model_call_image_parser_{contract_id}",
-        callbacks=callbacks
-    )
-    
     images = sorted(os.listdir(images_folder))  # Sort for consistent ordering
     
     # ThreadPoolExecutor will automatically propagate the OpenTelemetry context
@@ -122,8 +121,6 @@ def parse_full_contract(
             lambda image: parse_contract_image(
                 image_path=os.path.join(images_folder, image), 
                 contract_id=contract_id, 
-                model=model,
-                provider=provider,
                 callbacks=callbacks
             ), 
             images)
