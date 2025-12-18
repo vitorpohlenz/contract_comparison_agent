@@ -145,13 +145,15 @@ class TestEndToEndIntegration:
         mock_contextualization_instance.with_structured_output.return_value.invoke.return_value = mock_contextualized_output
         mock_contextualization_model.return_value = mock_contextualization_instance
         
-        # Execute: Contextualize documents
-        context = contextualize_documents(
-            original_text=original_text,
-            amendment_text=amendment_text,
-            contract_id=contract_id,
-            callbacks=None
+        # Execute: Contextualize documents using LangChain tool
+        context_dict = contextualize_documents.invoke(
+            {
+                "original_text": original_text,
+                "amendment_text": amendment_text,
+                "contract_id": contract_id
+            }
         )
+        context = ContextualizedContract(**context_dict)
         
         # Verify: Contextualization output is valid
         assert isinstance(context, ContextualizedContract)
@@ -190,13 +192,15 @@ class TestEndToEndIntegration:
         mock_extraction_instance.with_structured_output.return_value.invoke.return_value = mock_extraction_output
         mock_extraction_model.return_value = mock_extraction_instance
         
-        # Execute: Extract changes using contextualized text
-        result = extract_changes(
-            original_text=context.original_contract_text,
-            amendment_text=context.amendment_text,
-            contract_id=contract_id,
-            callbacks=None
+        # Execute: Extract changes using contextualized text with LangChain tool
+        result_dict = extract_changes.invoke(
+            {
+                "original_text": context.original_contract_text,
+                "amendment_text": context.amendment_text,
+                "contract_id": contract_id
+            }
         )
+        result = ContractChangeSummary(**result_dict)
         
         # Verify: Final output is valid ContractChangeSummary
         assert isinstance(result, ContractChangeSummary)
@@ -324,7 +328,14 @@ class TestEndToEndIntegration:
         mock_contextualization_instance.with_structured_output.return_value.invoke.return_value = contextualized
         mock_contextualization_model.return_value = mock_contextualization_instance
         
-        context = contextualize_documents(original_text, amendment_text, contract_id, callbacks=None)
+        context_dict = contextualize_documents.invoke(
+            {
+                "original_text": original_text,
+                "amendment_text": amendment_text,
+                "contract_id": contract_id
+            }
+        )
+        context = ContextualizedContract(**context_dict)
         
         # Mock extraction
         extraction_result = ContractChangeSummary(
@@ -340,12 +351,14 @@ class TestEndToEndIntegration:
         mock_extraction_instance.with_structured_output.return_value.invoke.return_value = extraction_result
         mock_extraction_model.return_value = mock_extraction_instance
         
-        result = extract_changes(
-            context.original_contract_text,
-            context.amendment_text,
-            contract_id,
-            callbacks=None
+        result_dict = extract_changes.invoke(
+            {
+                "original_text": context.original_contract_text,
+                "amendment_text": context.amendment_text,
+                "contract_id": contract_id
+            }
         )
+        result = ContractChangeSummary(**result_dict)
         
         # Verify multiple sections are handled
         assert len(result.topics_touched) == 2
@@ -415,7 +428,14 @@ class TestEndToEndIntegration:
         mock_contextualization_instance.with_structured_output.return_value.invoke.return_value = contextualized
         mock_contextualization_model.return_value = mock_contextualization_instance
         
-        context = contextualize_documents(original_text, amendment_text, contract_id, callbacks=None)
+        context_dict = contextualize_documents.invoke(
+            {
+                "original_text": original_text,
+                "amendment_text": amendment_text,
+                "contract_id": contract_id
+            }
+        )
+        context = ContextualizedContract(**context_dict)
         
         # Mock extraction
         extraction_result = ContractChangeSummary(
@@ -428,12 +448,14 @@ class TestEndToEndIntegration:
         mock_extraction_instance.with_structured_output.return_value.invoke.return_value = extraction_result
         mock_extraction_model.return_value = mock_extraction_instance
         
-        result = extract_changes(
-            context.original_contract_text,
-            context.amendment_text,
-            contract_id,
-            callbacks=None
+        result_dict = extract_changes.invoke(
+            {
+                "original_text": context.original_contract_text,
+                "amendment_text": context.amendment_text,
+                "contract_id": contract_id
+            }
         )
+        result = ContractChangeSummary(**result_dict)
         
         # Verify pipeline completes successfully even with fallback
         assert isinstance(result, ContractChangeSummary)

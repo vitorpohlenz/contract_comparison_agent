@@ -142,30 +142,34 @@ class TestAgentHandoff:
         mock_extraction_instance.with_structured_output.return_value.invoke.return_value = mock_extraction_output
         mock_extraction_model.return_value = mock_extraction_instance
         
-        # Execute: Run Agent 1 (contextualization)
+        # Execute: Run Agent 1 (contextualization) using LangChain tool
         original_text = "Full original contract text..."
         amendment_text = "Full amendment text..."
         contract_id = "test_contract_123"
         
-        context_result = contextualize_documents(
-            original_text=original_text,
-            amendment_text=amendment_text,
-            contract_id=contract_id,
-            callbacks=None
+        context_dict = contextualize_documents.invoke(
+            {
+                "original_text": original_text,
+                "amendment_text": amendment_text,
+                "contract_id": contract_id
+            }
         )
+        context_result = ContextualizedContract(**context_dict)
         
         # Verify Agent 1 output
         assert isinstance(context_result, ContextualizedContract)
         assert context_result.original_contract_text == mock_contextualized_output.original_contract_text
         assert context_result.amendment_text == mock_contextualized_output.amendment_text
         
-        # Execute: Run Agent 2 (extraction) with Agent 1's output
-        extraction_result = extract_changes(
-            original_text=context_result.original_contract_text,
-            amendment_text=context_result.amendment_text,
-            contract_id=contract_id,
-            callbacks=None
+        # Execute: Run Agent 2 (extraction) with Agent 1's output using LangChain tool
+        extraction_dict = extract_changes.invoke(
+            {
+                "original_text": context_result.original_contract_text,
+                "amendment_text": context_result.amendment_text,
+                "contract_id": contract_id
+            }
         )
+        extraction_result = ContractChangeSummary(**extraction_dict)
         
         # Verify Agent 2 received Agent 1's output
         assert isinstance(extraction_result, ContractChangeSummary)
@@ -213,20 +217,24 @@ class TestAgentHandoff:
         mock_extraction_instance.with_structured_output.return_value.invoke.return_value = mock_extraction_output
         mock_extraction_model.return_value = mock_extraction_instance
         
-        # Execute handoff
-        context = contextualize_documents(
-            original_text="Full original",
-            amendment_text="Full amendment",
-            contract_id="test",
-            callbacks=None
+        # Execute handoff using LangChain tools
+        context_dict = contextualize_documents.invoke(
+            {
+                "original_text": "Full original",
+                "amendment_text": "Full amendment",
+                "contract_id": "test"
+            }
         )
+        context = ContextualizedContract(**context_dict)
         
-        result = extract_changes(
-            original_text=context.original_contract_text,
-            amendment_text=context.amendment_text,
-            contract_id="test",
-            callbacks=None
+        result_dict = extract_changes.invoke(
+            {
+                "original_text": context.original_contract_text,
+                "amendment_text": context.amendment_text,
+                "contract_id": "test"
+            }
         )
+        result = ContractChangeSummary(**result_dict)
         
         # Verify data integrity: extraction should have used contextualized text
         call_args = mock_extraction_instance.with_structured_output.return_value.invoke.call_args
