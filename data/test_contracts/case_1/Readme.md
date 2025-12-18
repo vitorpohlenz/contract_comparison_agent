@@ -1,61 +1,43 @@
-Source of the document:  https://static-oforms.onlyoffice.com/software_development_agreement_1f7d063469.pdf
+# Amendment Explanation – Limitation of Liability
 
-🧾 What the Amendment Does (Exact Legal Change)
-🔴 Original Clause (Before Amendment)
+Source of the original:  https://static-oforms.onlyoffice.com/software_development_agreement_1f7d063469.pdf
 
-Section 14 – Limitation of Liability (Page 5 of the original contract):
+## Summary of the Change
+This amendment revises the **Limitation of Liability** provision to introduce a clear monetary
+liability cap while preserving critical customer protections through explicit carve-outs.
 
-> “Neither party shall be liable for any special, indirect, incidental or consequential damages…”
+## Original Clause (Before Amendment)
+**Section 14 – Limitation of Liability** stated that neither party would be liable for special,
+indirect, incidental, or consequential damages. However, the clause did **not** define any
+monetary cap on direct damages and did not include explicit exceptions.
 
-Key characteristics:
+## Amended Clause (After Amendment)
+**Section 14 is deleted and replaced in its entirety** with a new limitation of liability clause
+that:
 
-- Unlimited direct damages
+1. Introduces a **liability cap** equal to the total fees paid or payable in the twelve (12)
+   months preceding the event giving rise to the claim.
+2. Preserves the exclusion of indirect, incidental, consequential, and punitive damages.
+3. Adds **explicit carve-outs** so that the liability cap does *not* apply to:
+   - Breaches of confidentiality (Section 12)
+   - Indemnification obligations (Section 13)
+   - Willful misconduct or gross negligence
 
-- No liability cap
 
-- Blanket exclusion of consequential damages
+## Sections Impacted
+- **Section 14 – Limitation of Liability** (fully replaced)
 
-- No explicit carve-outs (e.g., confidentiality, indemnification)
+## Pages Impacted
+- **Page 5 of 7** of the original Software Development Agreement, where Section 14 appears.
 
-🟢 Amended Clause (After Amendment)
 
-Section 14 is deleted and replaced entirely with a modern, risk-balanced clause:
+## Legal and Practical Impact
+- Provides predictable risk exposure for both parties
+- Aligns liability with the economic value of the contract
+- Preserves customer protection for high-risk scenarios
+- Brings the agreement in line with modern SaaS and software services standards
 
-New Section 14 introduces:
-
-Explicit liability cap
-
-Liability capped at fees paid in the prior 12 months
-
-Carve-outs from the cap
-
-Breach of Confidentiality (Section 12)
-
-Indemnification obligations (Section 13)
-
-Willful misconduct or gross negligence
-
-Preserved damages exclusion
-
-Still excludes indirect, incidental, consequential, and punitive damages
-
-📍 Impact Analysis (For Your Agent Output)
-Sections Impacted
-
-Section 14 – Limitation of Liability (replaced in full)
-
-Pages Impacted
-
-Page 5 of 7 (where Section 14 appears in the original PDF)
-
-Topics Touched
-
-Liability allocation
-
-Risk management
-
-Damages limitation
-
-Contractual exposure
-
-Indemnification interplay
+## Net Effect
+The amendment materially changes the risk allocation between the parties by capping exposure
+while maintaining accountability for confidentiality breaches, indemnification claims, and
+intentional or reckless misconduct.
