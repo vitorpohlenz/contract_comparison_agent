@@ -28,10 +28,11 @@ contract_comparison_agent/
 │           ├── original/
 │           └── amendment/
 ├── tests/
-│   ├── test_agents.py                      # Agent handoff and integration tests
-│   └── test_validation.py                  # Pydantic validation and E2E tests
+│   ├── test_agents.py                      # Agent handoff, Pydantic validation, and integration tests
+│   └── test_validation.py                  # End to End tests
 ├── README.md
-└── .env                                    # Environment configuration (not in repo)
+├── requirements.txt                        # Python dependencies
+└── .env.example                            # Example of environment configuration
 ```
 
 ### Workflow Diagram
