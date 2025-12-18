@@ -12,22 +12,9 @@ from src.image_parser import parse_full_contract
 from src.agents.contextualization_agent import contextualize_documents
 from src.agents.extraction_agent import extract_changes
 from src.tracing import start_trace, start_span, CallbackHandler
-
-
-def _serialize_output(output):
-    """Serialize output data to be JSON-serializable for Langfuse."""
-    if hasattr(output, 'model_dump'):
-        return output.model_dump()
-    elif hasattr(output, 'dict'):
-        return output.dict()
-    elif isinstance(output, (str, int, float, bool, type(None))):
-        return output
-    elif isinstance(output, (list, tuple)):
-        return [_serialize_output(item) for item in output]
-    elif isinstance(output, dict):
-        return {k: _serialize_output(v) for k, v in output.items()}
-    else:
-        return str(output)
+from src.models import ContextualizedContract
+from src.models import ContractChangeSummary
+from src.utils import _serialize_output
 
 def main():
     if len(sys.argv) != 4:
@@ -119,7 +106,7 @@ def main():
 
         print(f"Length of Original text: {len(original_text)}")
         print(f"Length of Amendment text: {len(amendment_text)}")
-        # Step 3: Contextualize documents
+        # Step 3: Contextualize documents using LangChain tool
         with start_span(
             langfuse_client=langfuse_client,
             name="contextualize_documents",
@@ -131,15 +118,20 @@ def main():
             },
             metadata={"session_id": session_id, "contract_id": contract_id}
         ) as span_contextualize_documents:
-            context = contextualize_documents(
-                original_text=original_text,
-                amendment_text=amendment_text,
-                contract_id=contract_id,
-                callbacks=[langfuse_handler]
+            # Invoke the LangChain tool with callbacks in config
+            context_dict = contextualize_documents.invoke(
+                {
+                    "original_text": original_text,
+                    "amendment_text": amendment_text,
+                    "contract_id": contract_id
+                },
+                config={"callbacks": [langfuse_handler]}
             )
+            # Convert dict back to model for compatibility
+            context = ContextualizedContract(**context_dict)
             span_contextualize_documents.update(output=context.model_dump())
 
-        # Step 4: Extract changes
+        # Step 4: Extract changes using LangChain tool
         with start_span(
             langfuse_client=langfuse_client,
             name="extract_changes",
@@ -151,12 +143,17 @@ def main():
             },
             metadata={"session_id": session_id, "contract_id": contract_id}
         ) as span_extract_changes:
-            result = extract_changes(
-                original_text=context.original_contract_text,
-                amendment_text=context.amendment_text,
-                contract_id=contract_id,
-                callbacks=[langfuse_handler]
+            # Invoke the LangChain tool with callbacks in config
+            result_dict = extract_changes.invoke(
+                {
+                    "original_text": context.original_contract_text,
+                    "amendment_text": context.amendment_text,
+                    "contract_id": contract_id
+                },
+                config={"callbacks": [langfuse_handler]}
             )
+            # Convert dict back to model for compatibility
+            result = ContractChangeSummary(**result_dict)
             span_extract_changes.update(output=result.model_dump())
 
         print(result.model_dump())
