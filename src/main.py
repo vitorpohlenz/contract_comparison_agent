@@ -119,6 +119,7 @@ def main():
             metadata={"session_id": session_id, "contract_id": contract_id}
         ) as span_contextualize_documents:
             # Invoke the LangChain tool with callbacks in config
+            print(f"Invoking contexualization agent")
             context_dict = contextualize_documents.invoke(
                 {
                     "original_text": original_text,
@@ -130,6 +131,7 @@ def main():
             # Convert dict back to model for compatibility
             context = ContextualizedContract(**context_dict)
             span_contextualize_documents.update(output=context.model_dump())
+            print(f"Contextualized contract keys: {context.model_dump().keys()}")
 
         # Step 4: Extract changes using LangChain tool
         with start_span(
@@ -144,6 +146,7 @@ def main():
             metadata={"session_id": session_id, "contract_id": contract_id}
         ) as span_extract_changes:
             # Invoke the LangChain tool with callbacks in config
+            print(f"Invoking extraction agent")
             result_dict = extract_changes.invoke(
                 {
                     "original_text": context.original_contract_text,
@@ -156,7 +159,7 @@ def main():
             result = ContractChangeSummary(**result_dict)
             span_extract_changes.update(output=result.model_dump())
 
-        print(result.model_dump())
+        print(f"\nExtracted changes:\n {result.model_dump()}")
         
         # Set final output on the main trace
         main_trace.update(output=result.model_dump())
