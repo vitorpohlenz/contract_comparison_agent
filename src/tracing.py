@@ -110,18 +110,3 @@ def _serialize_value(value):
         return {k: _serialize_value(v) for k, v in value.items()}
     else:
         return str(value)
-
-def get_langfuse_callback_handler(trace_name: str = None):
-    """
-    Get a Langfuse callback handler for LangChain integration.
-    This will automatically capture all LangChain LLM calls as generations within the current trace.
-    
-    Args:
-        trace_name: Optional name for the trace. If None, will use the current trace context.
-    
-    Returns:
-        CallbackHandler instance
-    """
-    # CallbackHandler automatically uses environment variables if not provided
-    # It will automatically attach to the current trace context
-    return CallbackHandler()
