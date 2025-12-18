@@ -2,6 +2,8 @@ import sys
 sys.dont_write_bytecode = True
 import json
 from pathlib import Path
+from langfuse import get_client
+import uuid
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT_DIR))
@@ -10,7 +12,7 @@ from src.image_parser import parse_full_contract
 from src.agents.contextualization_agent import contextualize_documents
 from src.agents.extraction_agent import extract_changes
 from src.tracing import start_trace, start_span, CallbackHandler
-from langfuse import get_client
+
 
 def _serialize_output(output):
     """Serialize output data to be JSON-serializable for Langfuse."""
@@ -40,7 +42,7 @@ def main():
     langfuse_client = get_client()
     
     # Use contract_id as session_id for all spans
-    session_id = contract_id
+    session_id = str(uuid.uuid4())
 
     # Create centralized trace for the entire flow using langfuse.trace()
     with start_span(
@@ -51,7 +53,7 @@ def main():
             "amendment_path": amendment_path,
             "contract_id": contract_id
         },
-        metadata={"session_id": session_id}
+        metadata={"session_id": session_id, "contract_id": contract_id}
     ) as main_trace:
         
         # Get Langfuse callback handler for LangChain integration
@@ -72,7 +74,7 @@ def main():
                 "path": original_path,
                 "contract_id": contract_id
             },
-            metadata={"session_id": session_id}
+            metadata={"session_id": session_id, "contract_id": contract_id}
         ) as span_parse_contract:
             # With ThreadingInstrumentor, the trace context is automatically propagated
             # to worker threads, so no need to manually pass trace_id or parent_span_id
@@ -99,7 +101,7 @@ def main():
                 "path": amendment_path,
                 "contract_id": contract_id
             },
-            metadata={"session_id": session_id}
+            metadata={"session_id": session_id, "contract_id": contract_id}
         ) as span_parse_amendment:
             # With ThreadingInstrumentor, the trace context is automatically propagated
             # to worker threads, so no need to manually pass trace_id or parent_span_id
@@ -127,7 +129,7 @@ def main():
                 "original_text_length": len(original_text),
                 "amendment_text_length": len(amendment_text)
             },
-            metadata={"session_id": session_id}
+            metadata={"session_id": session_id, "contract_id": contract_id}
         ) as span_contextualize_documents:
             context = contextualize_documents(
                 original_text=original_text,
@@ -147,7 +149,7 @@ def main():
                 "contextualized_original_length": len(context.original_contract_text),
                 "contextualized_amendment_length": len(context.amendment_text)
             },
-            metadata={"session_id": session_id}
+            metadata={"session_id": session_id, "contract_id": contract_id}
         ) as span_extract_changes:
             result = extract_changes(
                 original_text=context.original_contract_text,
