@@ -34,7 +34,13 @@ SYSTEM_PROMPT = (
     )
 
 def encode_image(path: str) -> str:
-    """Encode an image file to base64 string."""
+    """
+    Encode an image file to base64 string.
+    Args:
+        path: The path to the image file.
+    Returns:
+        The base64 encoded string of the image.
+    """
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
@@ -48,8 +54,13 @@ def parse_contract_image_with_fallback_model(
     Fallback function using google/gemma-3-4b-it:free model.
     This is used when the primary vision model fails.
     
+    Args:
+        image_path: The path to the image file.
+        contract_id: The contract ID.
+        callbacks: The callbacks to use.
+        fallback_model_name: The name of the fallback model.
     Returns:
-        Extracted text from the image using the fallback model
+        The extracted text from the image using the fallback model.
     """
     image_b64 = encode_image(image_path)
     
@@ -96,8 +107,12 @@ def parse_contract_image(
     
     Uses google/gemma-3-4b-it:free as fallback if the primary vision model fails.
     
+    Args:
+        image_path: The path to the image file.
+        contract_id: The contract ID.
+        callbacks: The callbacks to use.
     Returns:
-        Parsed text from the image
+        The parsed text from the image.
     """
     try:
         # The callback handler automatically attaches to the current trace context
@@ -173,6 +188,12 @@ def parse_full_contract(
     The OpenTelemetry context (including Langfuse trace context) is automatically
     propagated to worker threads via ThreadingInstrumentor, so child observations
     will automatically be nested under the current trace context.
+    Args:
+        images_folder: The path to the folder containing the images.
+        contract_id: The contract ID.
+        callbacks: The callbacks to use.
+    Returns:
+        The parsed text from the images.
     """
     images = sorted(os.listdir(images_folder))  # Sort for consistent ordering
     

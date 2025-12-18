@@ -4,7 +4,7 @@ sys.dont_write_bytecode = True
 import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, Message
 
 load_dotenv()
 
@@ -13,10 +13,16 @@ AI_API_CLIENT = ChatOpenAI(
     base_url=os.getenv("LLM_BASE_URL")
 )
 
-def prompt_template(system_prompt: str, user_prompt: str, full_model_name: str):
+def prompt_template(system_prompt: str, user_prompt: str, full_model_name: str) -> list[Message]:
     """
     Create LangChain messages from system and user prompts.
-    Returns a list of LangChain message objects.
+    
+    Args:
+        system_prompt: The system prompt for the model.
+        user_prompt: The user prompt for the model.
+        full_model_name: The full model name.
+    Returns:
+        A list of Message objects.
     """
     provider = full_model_name.split('/')[0] if full_model_name else "unknown"
 
