@@ -34,8 +34,54 @@ SYSTEM_PROMPT = (
     )
 
 def encode_image(path: str) -> str:
+    """Encode an image file to base64 string."""
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
+
+def parse_contract_image_with_fallback_model(
+    image_path: str, 
+    contract_id: str, 
+    callbacks=None,
+    fallback_model_name: str="google/gemma-3-4b-it:free"
+) -> str:
+    """
+    Fallback function using google/gemma-3-4b-it:free model.
+    This is used when the primary vision model fails.
+    
+    Returns:
+        Extracted text from the image using the fallback model
+    """
+    image_b64 = encode_image(image_path)
+    
+    # Create a model instance with the fallback model
+    fallback_model = ChatOpenAI(
+        model=fallback_model_name,
+        api_key=os.getenv("LLM_API_KEY"),
+        base_url=os.getenv("LLM_BASE_URL"),
+        temperature=0,
+        name=f"fallback_model_image_parser_{contract_id}",
+        callbacks=callbacks
+    )
+    
+    # Gemini and others providers do not support system messages
+    messages = [
+        HumanMessage(
+            content=[
+                {"type": "text", "text": SYSTEM_PROMPT},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/png;base64,{image_b64}"
+                    }
+                }
+            ]
+        )
+    ]
+    
+    response = fallback_model.invoke(messages)
+    parsed_text = response.content
+    
+    return parsed_text
 
 def parse_contract_image(
     image_path: str, 
@@ -47,57 +93,75 @@ def parse_contract_image(
     This function runs in a separate thread, and the OpenTelemetry context
     (including Langfuse trace context) is automatically propagated via ThreadingInstrumentor.
     No need to manually pass trace_id or parent_span_id - the context is inherited automatically.
+    
+    Uses google/gemma-3-4b-it:free as fallback if the primary vision model fails.
+    
+    Returns:
+        Parsed text from the image
     """
-    # The callback handler automatically attaches to the current trace context
-    # which is propagated from the parent thread via ThreadingInstrumentor
-    image_b64 = encode_image(image_path)
-    
-    vision_model = os.getenv("IMAGE_MULTIMODAL_MODEL")
+    try:
+        # The callback handler automatically attaches to the current trace context
+        # which is propagated from the parent thread via ThreadingInstrumentor
+        image_b64 = encode_image(image_path)
+        vision_model = os.getenv("IMAGE_MULTIMODAL_MODEL")
 
-    provider = vision_model.split('/')[0] if vision_model else "unknown"
+        provider = vision_model.split('/')[0] if vision_model else "unknown"
 
-    # Create a model instance with the specific vision model for this call
-    model = ChatOpenAI(
-        model=vision_model,
-        api_key=os.getenv("LLM_API_KEY"),
-        base_url=os.getenv("LLM_BASE_URL"),
-        temperature=0,
-        name=f"model_call_image_parser_{contract_id}",
-        callbacks=callbacks
-    )
-    
+        # Create a model instance with the specific vision model for this call
+        model = ChatOpenAI(
+            model=vision_model,
+            api_key=os.getenv("LLM_API_KEY"),
+            base_url=os.getenv("LLM_BASE_URL"),
+            temperature=0,
+            name=f"model_call_image_parser_{contract_id}",
+            callbacks=callbacks
+        )
+        
 
-    if provider == "openai":
-        messages = [
-            SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(
-                content=[
-                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}}
-                ]
-            )
-        ]
-    else:
-        # Gemini and others providers does not support system messages
-        messages = [
-            HumanMessage(
-                content=[
-                    {"type": "text", "text": SYSTEM_PROMPT},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/png;base64,{image_b64}"
+        if provider == "openai":
+            messages = [
+                SystemMessage(content=SYSTEM_PROMPT),
+                HumanMessage(
+                    content=[
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}}
+                    ]
+                )
+            ]
+        else:
+            # Gemini and others providers does not support system messages
+            messages = [
+                HumanMessage(
+                    content=[
+                        {"type": "text", "text": SYSTEM_PROMPT},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{image_b64}"
+                            }
                         }
-                    }
-                ]
-            )
-        ]
+                    ]
+                )
+            ]
 
-    # The model.invoke() call will automatically create observations in the current trace context
-    # The callbacks parameter ensures LangChain integrates with Langfuse
-    # Callbacks are passed directly to invoke() - they automatically attach to the current trace context
-    response = model.invoke(messages)
-    parsed_text = response.content
-    return parsed_text
+        # The model.invoke() call will automatically create observations in the current trace context
+        # The callbacks parameter ensures LangChain integrates with Langfuse
+        # Callbacks are passed directly to invoke() - they automatically attach to the current trace context
+        response = model.invoke(messages)
+        parsed_text = response.content
+        
+        if not parsed_text or not parsed_text.strip():
+            # If primary model returns empty, try fallback model
+            return parse_contract_image_with_fallback_model(image_path, contract_id, callbacks)
+        
+        return parsed_text
+    
+    except Exception as e:
+        # If primary model fails, try fallback model (google/gemma-3-4b-it:free)
+        try:
+            return parse_contract_image_with_fallback_model(image_path, contract_id, callbacks)
+        except Exception as fallback_error:
+            # If fallback also fails, raise the original error
+            raise Exception(f"Both primary model ({vision_model}) and fallback model (google/gemma-3-4b-it:free) failed. Primary error: {str(e)}, Fallback error: {str(fallback_error)}") from e
 
 def parse_full_contract(
     images_folder: str, 
@@ -112,10 +176,15 @@ def parse_full_contract(
     """
     images = sorted(os.listdir(images_folder))  # Sort for consistent ordering
     
+    # Filter out non-image files (optional, but good practice)
+    image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
+    images = [img for img in images if any(img.lower().endswith(ext) for ext in image_extensions)]
+    
     # ThreadPoolExecutor will automatically propagate the OpenTelemetry context
     # to each worker thread thanks to ThreadingInstrumentor
     # Each parse_contract_image call will automatically create observations
     # in the current trace context without needing to pass trace_id or parent_span_id
+    # If primary model fails, fallback model (google/gemma-3-4b-it:free) will be used automatically
     with ThreadPoolExecutor(max_workers=len(images)) as executor:
         text_list = list(executor.map(
             lambda image: parse_contract_image(
