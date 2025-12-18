@@ -1,0 +1,112 @@
+from langfuse import Langfuse, get_client
+from langfuse.langchain import CallbackHandler
+import os
+from contextlib import contextmanager
+from dotenv import load_dotenv
+from datetime import datetime
+load_dotenv()
+
+langfuse = Langfuse(
+    public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+    secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
+    host=os.getenv("LANGFUSE_HOST"),
+)
+
+@contextmanager
+def start_trace(langfuse_client: Langfuse, name: str, input: dict, metadata: dict=None):
+    """
+    Context manager for creating Langfuse traces with proper input/output handling.
+    Uses start_as_current_observation with as_type="trace" (modern Langfuse API).
+    
+    Args:
+        name: Name of the trace
+        input: Input data (will be serialized)
+        metadata: Optional metadata dictionary to add to the trace
+    
+    Yields:
+        Trace object that can be used to create child spans and set output
+    """
+    # Prepare metadata with timestamp
+    trace_metadata = metadata.copy() if metadata else {}
+    trace_metadata['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+    
+    with langfuse_client.start_as_current_observation(
+        name=name,
+        input=_serialize_input(input),
+        as_type="trace",
+        metadata=trace_metadata
+    ) as trace:
+        try:
+            yield trace
+        finally:
+            pass
+
+@contextmanager
+def start_span(langfuse_client: Langfuse, name: str, input: dict, langfuse_trace_id=None, langfuse_parent_span_id=None, metadata: dict=None):
+    """
+    Context manager for creating child spans within an existing trace.
+    Uses start_as_current_observation with as_type="span" which automatically attaches to the current trace context.
+    
+    Args:
+        name: Name of the span
+        input: Input data (will be serialized)
+        langfuse_trace_id: Trace ID
+        langfuse_parent_observation_id: Parent observation ID
+        metadata: Optional metadata dictionary to add to the span
+    
+    Yields:
+        Span object that can be used to set output
+    """
+    # Prepare metadata with timestamp
+    span_metadata = metadata.copy() if metadata else {}
+    span_metadata['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+    
+    if not(langfuse_trace_id is None) and not (langfuse_parent_span_id is None):
+        with langfuse_client.start_as_current_observation(
+            name=name,
+            as_type="span",
+            input=_serialize_input(input),
+            metadata=span_metadata,
+            trace_context={
+                "trace_id": langfuse_trace_id,
+                "parent_span_id": langfuse_parent_span_id
+            }
+            ) as span:
+                try:
+                    yield span
+                finally:
+                    pass
+    else:
+        with langfuse_client.start_as_current_observation(
+            name=name,
+            input=_serialize_input(input),
+            as_type="span",
+            metadata=span_metadata
+        ) as span:
+            try:
+                yield span
+            finally:
+                pass
+
+def _serialize_input(input_data):
+    """Serialize input data to be JSON-serializable for Langfuse."""
+    if isinstance(input_data, dict):
+        return {k: _serialize_value(v) for k, v in input_data.items()}
+    return _serialize_value(input_data)
+
+def _serialize_value(value):
+    """Serialize a single value to be JSON-serializable."""
+    if hasattr(value, 'model_dump'):
+        # Pydantic model
+        return value.model_dump()
+    elif hasattr(value, 'dict'):
+        # Pydantic model (older versions)
+        return value.dict()
+    elif isinstance(value, (str, int, float, bool, type(None))):
+        return value
+    elif isinstance(value, (list, tuple)):
+        return [_serialize_value(item) for item in value]
+    elif isinstance(value, dict):
+        return {k: _serialize_value(v) for k, v in value.items()}
+    else:
+        return str(value)
