@@ -183,6 +183,37 @@ The system will:
 5. Extract and summarize changes
 6. Output the structured result to console and Langfuse
 
+### Running Tests
+
+The project includes comprehensive test suites using pytest. To run the tests:
+
+**Run all tests:**
+```bash
+pytest tests/
+```
+
+**Run specific test file:**
+```bash
+pytest tests/test_agents.py          # Agent handoff and integration tests
+pytest tests/test_validation.py      # Pydantic validation and E2E tests
+```
+
+**Run tests with verbose output:**
+```bash
+pytest tests/ -v
+```
+
+**Run tests with coverage report:**
+```bash
+pytest tests/ --cov=src --cov-report=html
+```
+
+The test suite includes:
+- Pydantic model validation tests
+- Agent handoff and data integrity tests
+- Image parsing functionality tests
+- End-to-end integration tests
+
 ## Expected Output Format
 
 The agent returns a structured JSON object conforming to the `ContractChangeSummary` model:
